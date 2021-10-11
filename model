@@ -40,33 +40,40 @@ augmentor = tf.keras.Sequential([
 norm = tf.keras.layers.experimental.preprocessing.Rescaling(1/255)
 
 # 모델 생성
-input_ = tf.keras.Input((weight, height, channel))
-x = augmentor(input_)
-x = norm(x)
+vgg16 = tf.keras.applications.VGG16(include_top=False, input_shape=(weight, height, channel))
+vgg16.trainable = False
 
-x = tf.keras.layers.Conv2D(128, 3, padding='same', activation='relu')(x)
-x = tf.keras.layers.BatchNormalization()(x)
-x = tf.keras.layers.Activation('relu')(x)
-
-x = tf.keras.layers.Conv2D(64, 3, padding='same', activation='relu')(x)
-x = tf.keras.layers.BatchNormalization()(x)
-x = tf.keras.layers.Activation('relu')(x)
-
-x = tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu')(x)
-x = tf.keras.layers.BatchNormalization()(x)
-x = tf.keras.layers.Activation('relu')(x)
-
-x = tf.keras.layers.GlobalAveragePooling2D()(x)
-x = tf.keras.layers.Activation('relu')(x)
-x = tf.keras.layers.Dropout(0.2)(x)
-x = tf.keras.layers.Dense(16)(x)
-x = tf.keras.layers.Activation('relu')(x)
-x = tf.keras.layers.Dense(7)(x)
-output = tf.keras.layers.Activation('softmax')(x)
-
-model = tf.keras.models.Model(input_, output)
+model = tf.keras.Sequential([
+    augmentor,
+    norm,
+    vgg16,
+    tf.keras.layers.GlobalAvgPool2D(),
+    tf.keras.layers.Activation('relu'),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(7, activation='softmax')
+])
 
 es = tf.keras.callbacks.EarlyStopping(monitor = 'loss', patience =30)
 
 model.compile(optimizer='adam', loss='SparseCategoricalCrossentropy', metrics=['acc'])
 model.fit(trainset, validation_data=valset, epochs=100, callbacks=es)
+
+# Accuracy와 Loss 그래프로 시각화
+acc = history.history['acc']
+val_acc = history.history['val_acc']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs = range(len(acc))
+
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.title('Acc vs Val_Acc')
+plt.plot(epochs, acc, label = 'acc')
+plt.plot(epochs, val_acc, label = 'val_acc')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.title('Loss vs Val_Loss')
+plt.plot(epochs, loss, label = 'loss')
+plt.plot(epochs, val_loss, label = 'val_loss')
+plt.legend()
