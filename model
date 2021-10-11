@@ -1,0 +1,72 @@
+import tensorflow as tf
+import os
+import pathlib
+import matplotlib.pyplot as plt
+import numpy as np
+
+weight = 227
+height = 227
+channel = 3
+autotune = tf.data.experimental.AUTOTUNE
+seed = 42
+
+path = './art_classification/'
+
+train = os.path.join(path, 'train')
+trainset = tf.keras.preprocessing.image_dataset_from_directory(train, 
+                                                           image_size=(weight, height),
+                                                           validation_split=.3,
+                                                           subset='training',
+                                                           seed=seed, batch_size=10)
+trainset = trainset.cache().prefetch(autotune)
+
+valset = tf.keras.preprocessing.image_dataset_from_directory(train, 
+                                                           image_size=(weight, height),
+                                                           validation_split=.3,
+                                                           subset='validation',
+                                                           seed=seed, batch_size=10)
+valset = valset.cache().prefetch(autotune)
+
+test = os.path.join(path, 'test/0')
+
+# 데이터 증강
+augmentor = tf.keras.Sequential([
+        tf.keras.layers.experimental.preprocessing.RandomFlip(input_shape = (weight, height, channel)),
+        tf.keras.layers.experimental.preprocessing.RandomRotation(0.3),
+        tf.keras.layers.experimental.preprocessing.RandomZoom(0.2),
+    ])
+
+# 데이터 정규화
+norm = tf.keras.layers.experimental.preprocessing.Rescaling(1/255)
+
+# 모델 생성
+input_ = tf.keras.Input((weight, height, channel))
+x = augmentor(input_)
+x = norm(x)
+
+x = tf.keras.layers.Conv2D(128, 3, padding='same', activation='relu')(x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation('relu')(x)
+
+x = tf.keras.layers.Conv2D(64, 3, padding='same', activation='relu')(x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation('relu')(x)
+
+x = tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu')(x)
+x = tf.keras.layers.BatchNormalization()(x)
+x = tf.keras.layers.Activation('relu')(x)
+
+x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Activation('relu')(x)
+x = tf.keras.layers.Dropout(0.2)(x)
+x = tf.keras.layers.Dense(16)(x)
+x = tf.keras.layers.Activation('relu')(x)
+x = tf.keras.layers.Dense(7)(x)
+output = tf.keras.layers.Activation('softmax')(x)
+
+model = tf.keras.models.Model(input_, output)
+
+es = tf.keras.callbacks.EarlyStopping(monitor = 'loss', patience =30)
+
+model.compile(optimizer='adam', loss='SparseCategoricalCrossentropy', metrics=['acc'])
+model.fit(trainset, validation_data=valset, epochs=100, callbacks=es)
