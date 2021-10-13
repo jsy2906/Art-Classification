@@ -3,6 +3,7 @@ import os
 import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 weight = 227
 height = 227
@@ -28,6 +29,8 @@ valset = tf.keras.preprocessing.image_dataset_from_directory(train,
 valset = valset.cache().prefetch(autotune)
 
 test = os.path.join(path, 'test/0')
+test = os.listdir(test)
+test_df = pd.DataFrame(test, columns=['file name'])
 
 # 데이터 증강
 augmentor = tf.keras.Sequential([
