@@ -12,7 +12,7 @@ autotune = tf.data.experimental.AUTOTUNE
 seed = 42
 
 # 데이터 경로 지정
-path = 'C:/Users/pc/Desktop/20171787/AI/art_classification'
+path = './art_classification'
 
 train = os.path.join(path, 'train')
 test = os.path.join(path, 'test/0')
